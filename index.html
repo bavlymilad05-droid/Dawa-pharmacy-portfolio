@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dawaa Pharmacy is an n8n-powered WhatsApp reservation demo, with Gemini, Google Sheets and Telegram pharmacist review.">
+  <title>Dawaa Pharmacy | n8n Automation Portfolio</title>
+  <script>
+    // Set appearance before rendering to avoid a bright flash when dark mode is saved.
+    try {
+      const savedTheme = localStorage.getItem('dawaa-theme');
+      const savedLanguage = localStorage.getItem('dawaa-language');
+      document.documentElement.dataset.theme =
+        savedTheme === 'dark' || savedTheme === 'light' ? savedTheme :
+        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (savedLanguage === 'ar') {
+        document.documentElement.lang = 'ar';
+        document.documentElement.dir = 'rtl';
+      }
+    } catch (_) { document.documentElement.dataset.theme = 'light'; }
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink:#132d31; --muted:#5f7376;
+      --teal:#007b70; --teal-dark:#005d56; --line:#dce8e6;
+      --paper:#f6faf9; --surface:#fff; --mint:#e4f5ee;
+      --input-line:#b8ceca; --hero-orb:#c9eee4;
+      --badge-bg:#fff4df; --badge-ink:#77501c; --badge-line:#f5d89d;
+      --badge-dot:#df9c35; --hover:#edf5f2;
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --ink:#eef7f5; --muted:#b2c8c6;
+      --teal:#43d5bc; --teal-dark:#8df1d9; --line:#294944;
+      --paper:#0b171a; --surface:#13272a; --mint:#20433d;
+      --input-line:#496761; --hero-orb:#134b44;
+      --badge-bg:#4b381a; --badge-ink:#ffdc98; --badge-line:#745628;
+      --badge-dot:#f0b859; --hover:#1c3a37;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--paper); transition:background-color .18s,color .18s; }
+    a { color:inherit; }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; }
+    a:focus-visible,button:focus-visible,textarea:focus-visible { outline:3px solid var(--teal); outline-offset:3px; }
+    .wrap { width:min(1080px,calc(100% - 40px)); margin:0 auto; }
+    header { background:var(--surface); border-bottom:1px solid var(--line); }
+    .nav { min-height:74px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand { text-decoration:none; font-weight:800; font-size:1.15rem; letter-spacing:-.035em; display:flex; align-items:center; gap:11px; white-space:nowrap; }
+    .brandmark { width:37px; height:37px; border-radius:12px; display:grid; place-items:center; background:var(--mint); font-size:21px; }
+    .nav-right { display:flex; align-items:center; gap:19px; flex-wrap:wrap; justify-content:flex-end; }
+    nav { display:flex; gap:20px; flex-wrap:wrap; }
+    nav a { text-decoration:none; font-size:.9rem; color:var(--muted); }
+    nav a:hover { color:var(--teal-dark); }
+    .controls { display:flex; align-items:center; gap:7px; }
+    .control { background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:11px; padding:9px 12px; font-size:.83rem; font-weight:700; min-height:39px; white-space:nowrap; }
+    .control:hover { background:var(--hover); }
+    .hero { position:relative; padding:98px 0 90px; overflow:hidden; isolation:isolate; }
+    .hero:after { content:""; position:absolute; width:440px; height:440px; background:var(--hero-orb); border-radius:50%; right:-200px; top:-210px; opacity:.68; z-index:-1; }
+    .eyebrow { text-transform:uppercase; color:var(--teal); font-size:.77rem; font-weight:800; letter-spacing:.12em; }
+    h1 { font-size:clamp(2.7rem,7.2vw,5.1rem); letter-spacing:-.065em; line-height:1.06; max-width:830px; margin:15px 0 20px; }
+    .hero p { max-width:670px; line-height:1.8; color:var(--muted); font-size:1.1rem; }
+    .hero-actions { margin:28px 0 0; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+    .btn { cursor:pointer; text-decoration:none; border:1px solid transparent; background:#007b70; color:#fff; font-weight:750; padding:14px 19px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; gap:9px; transition:transform .15s,background-color .15s; }
+    .btn:hover { background:#005d56; transform:translateY(-1px); }
+    html[data-theme="dark"] .btn { background:#43d5bc; color:#09221f; }
+    html[data-theme="dark"] .btn:hover { background:#8df1d9; }
+    .btn.secondary { background:var(--surface)!important; color:var(--ink)!important; border-color:var(--line); }
+    .btn.secondary:hover { background:var(--hover)!important; }
+    .badge { display:inline-flex; align-items:center; gap:8px; background:var(--badge-bg); color:var(--badge-ink); border:1px solid var(--badge-line); border-radius:100px; padding:8px 13px; font-weight:750; font-size:.79rem; }
+    .badge:before { content:""; width:7px; height:7px; background:var(--badge-dot); border-radius:100px; }
+    .note { font-size:.87rem!important; color:var(--muted); max-width:680px; }
+    .section { padding:66px 0; }
+    .section h2 { font-size:clamp(1.65rem,3.5vw,2.55rem); margin:0 0 10px; letter-spacing:-.05em; }
+    .lead { color:var(--muted); line-height:1.75; max-width:700px; margin:0 0 26px; }
+    .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .card { background:var(--surface); border:1px solid var(--line); padding:25px; border-radius:19px; }
+    .card .glyph { background:var(--mint); width:46px; height:46px; border-radius:13px; display:grid; place-items:center; font-size:23px; }
+    h3 { font-size:1.1rem; margin:17px 0 9px; }
+    .card p { color:var(--muted); line-height:1.65; font-size:.94rem; margin:0 0 15px; }
+    .textlink { font-weight:800; color:var(--teal-dark); text-decoration:none; }
+    .panel { background:var(--surface); border:1px solid var(--line); padding:30px; border-radius:20px; }
+    .trial { display:grid; grid-template-columns:1.2fr .8fr; gap:34px; align-items:center; }
+    label { font-weight:800; display:block; margin-bottom:10px; }
+    textarea { width:100%; min-height:118px; padding:14px; line-height:1.5; resize:vertical; border:1px solid var(--input-line); border-radius:12px; background:var(--surface); color:var(--ink); }
+    textarea::placeholder { color:var(--muted); opacity:.85; }
+    .help { font-size:.82rem; color:var(--muted); line-height:1.65; }
+    .trial .btn { margin-top:12px; }
+    .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; }
+    .step { border-top:2px solid var(--teal); padding:17px 8px 8px 0; }
+    .num { font-size:.78rem; font-weight:800; letter-spacing:.11em; color:var(--teal); }
+    .step h3 { margin-top:9px; }
+    .step p { margin:0; color:var(--muted); line-height:1.7; font-size:.9rem; }
+    .downloads { display:flex; flex-wrap:wrap; gap:12px; }
+    .file { background:var(--surface); border:1px solid var(--line); text-decoration:none; padding:15px 18px; border-radius:12px; font-weight:750; }
+    .file:hover { border-color:var(--teal); color:var(--teal-dark); }
+    footer { border-top:1px solid var(--line); padding:26px 0; font-size:.9rem; color:var(--muted); }
+    .footerline { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    html[dir="rtl"] h1,html[dir="rtl"] h2 { letter-spacing:normal; }
+    html[dir="rtl"] .eyebrow:not(.tech),html[dir="rtl"] .num { letter-spacing:normal; }
+    html[dir="rtl"] .step { padding:17px 0 8px 8px; }
+    html[dir="rtl"] .hero:after { right:auto; left:-200px; }
+
+/* Faithful n8n graph viewer: client-side diagram data is names, types, positions, and links only. */
+.wf-section { padding-top:18px; }
+.wf-heading-line { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+.wf-shell { border:1px solid var(--line); border-radius:23px; overflow:hidden; background:var(--surface); box-shadow:0 10px 40px rgba(3,45,39,.035); }
+.wf-topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; padding:17px 20px; border-bottom:1px solid var(--line); }
+.wf-tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.wf-tab { border:1px solid var(--line); background:var(--paper); color:var(--ink); padding:10px 15px; border-radius:11px; font-size:.9rem; font-weight:750; }
+.wf-tab[aria-selected="true"] { background:var(--mint); color:var(--teal-dark); border-color:var(--teal); }
+.wf-mini-info { color:var(--muted); font-size:.78rem; }
+.wf-toolbar { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; gap:12px; padding:12px 18px; background:var(--paper); border-bottom:1px solid var(--line); }
+.wf-zoom-controls { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
+.wf-tool { border:1px solid var(--line); color:var(--ink); background:var(--surface); font-weight:750; border-radius:9px; min-height:36px; padding:6px 12px; font-size:.85rem; }
+.wf-tool:hover { border-color:var(--teal); color:var(--teal-dark); }
+.wf-tool:disabled { opacity:.5; cursor:not-allowed; }
+.wf-search { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:9px; width:min(280px,100%); min-height:36px; padding:6px 12px; }
+.wf-canvas-wrap { position:relative; overflow:hidden; background:var(--paper); }
+#wfSvg { direction:ltr; display:block; width:100%; height:clamp(430px,55vw,610px); cursor:grab; touch-action:none; user-select:none; }
+#wfSvg.dragging { cursor:grabbing; }
+#wfSvg .wf-dot { fill:var(--line); }
+#wfSvg .wf-edge { fill:none; stroke:var(--wf-edge,#9eb7b3); stroke-width:2.3; vector-effect:non-scaling-stroke; }
+#wfSvg .wf-edge.is-active { stroke:var(--teal); stroke-width:3.3; }
+#wfSvg .wf-arrow { fill:var(--wf-edge,#9eb7b3); }
+#wfSvg .wf-node { cursor:pointer; outline:none; }
+#wfSvg .wf-node .wf-card { fill:var(--surface); stroke:var(--line); stroke-width:2; rx:13; ry:13; }
+#wfSvg .wf-node:hover .wf-card,#wfSvg .wf-node.selected .wf-card,#wfSvg .wf-node:focus-visible .wf-card { stroke:var(--teal); stroke-width:3; }
+#wfSvg .wf-node .wf-iconbg { rx:9;ry:9; }
+#wfSvg .wf-node .wf-icontext { fill:#fff; font:700 11px system-ui,Arial,sans-serif; text-anchor:middle; dominant-baseline:middle; }
+#wfSvg .wf-node .wf-name { fill:var(--ink); font:700 12.5px system-ui,Arial,sans-serif; dominant-baseline:middle; }
+#wfSvg .wf-node .wf-type { fill:var(--muted); font:500 9.6px system-ui,Arial,sans-serif; }
+#wfSvg .wf-node .wf-port { fill:var(--surface); stroke:var(--wf-edge,#9eb7b3);stroke-width:1.5; }
+#wfSvg .wf-edge-text { fill:var(--muted); font:700 10px system-ui,Arial,sans-serif; paint-order:stroke; stroke:var(--paper); stroke-width:5px; }
+.wf-bottom { padding:16px 20px; display:grid; grid-template-columns:1.1fr 1fr; gap:20px; border-top:1px solid var(--line); }
+.wf-detail { min-height:80px; }
+.wf-detail b { display:block; margin-bottom:6px; font-size:.94rem; }
+.wf-detail .wf-detail-text { color:var(--muted); font-size:.84rem; line-height:1.6; }
+.wf-legend { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; align-content:center; }
+.wf-tag { display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line); border-radius:30px;padding:6px 9px;color:var(--muted);font-size:.72rem; }
+.wf-tag i { display:inline-block;height:9px;width:9px;border-radius:3px;background:var(--c); }
+.wf-hint { color:var(--muted); font-size:.8rem; line-height:1.65; margin:12px 2px 0; }
+.wf-shell:fullscreen { display:flex; flex-direction:column; background:var(--surface); }
+.wf-shell:fullscreen .wf-canvas-wrap { flex:1; min-height:0; }
+.wf-shell:fullscreen #wfSvg { height:100%; }
+html[data-theme="dark"] #wfSvg { --wf-edge:#58746d; }
+html[data-theme="light"] #wfSvg { --wf-edge:#94b3ad; }
+@media(max-width:730px) { .wf-bottom { grid-template-columns:1fr; } .wf-legend { justify-content:flex-start; } .wf-toolbar { align-items:stretch; } .wf-search { width:100%; } }
+
+    @media (max-width:920px) { .nav { flex-wrap:wrap; padding:13px 0; } .nav-right { gap:12px; } }
+    @media (max-width:800px) { .cards,.steps { grid-template-columns:1fr 1fr; } .trial { grid-template-columns:1fr; } .hero { padding:68px 0; } }
+    @media (max-width:570px) { .wrap { width:min(100% - 30px,1080px); } .cards,.steps { grid-template-columns:1fr; } .nav-right { width:100%; justify-content:space-between; } nav { gap:12px; } .panel { padding:21px; } .hero { padding:58px 0; } }
+    @media (prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a href="#top" class="brand"><span class="brandmark" aria-hidden="true">💊</span> Dawaa Pharmacy</a>
+      <div class="nav-right">
+        <nav aria-label="Main navigation" id="mainNav">
+          <a href="#try" data-i18n="navTry">Try it</a>
+          <a href="#how" data-i18n="navHow">How it works</a>
+          <a href="#diagram" data-i18n="navDiagram">Workflow diagram</a>
+          <a href="#downloads" data-i18n="navDownloads">Downloads</a>
+        </nav>
+        <div class="controls">
+          <button type="button" class="control" id="languageToggle" aria-label="Switch to Arabic">العربية</button>
+          <button type="button" class="control" id="themeToggle" aria-label="Enable dark mode" aria-pressed="false">☾ Dark mode</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow tech">n8n · WhatsApp Cloud API · Gemini</div>
+        <h1 data-i18n="heroTitle">Smarter pharmacy reservations, powered by automation.</h1>
+        <p data-i18n="heroDescription">Dawaa receives medicine requests on WhatsApp, checks a Google Sheets catalog, and routes orders for automatic reservation or pharmacist review through Telegram.</p>
+        <div class="hero-actions">
+          <a id="heroWhatsApp" class="btn" href="https://wa.me/15551937628" target="_blank" rel="noopener noreferrer" data-i18n="heroReserve">Reserve a medicine ↗</a>
+          <a class="btn secondary" href="#diagram" data-i18n="heroExplore">Explore the workflows</a>
+          <span class="badge" id="status" data-i18n="badge">Meta test mode</span>
+        </div>
+        <p class="note" data-i18n="heroNote">Portfolio demonstration only. The connected Meta WhatsApp test number is restricted to approved test recipients; this badge is not a live n8n uptime check.</p>
+      </div>
+    </section>
+
+    <section class="section" id="actions">
+      <div class="wrap">
+        <h2 data-i18n="actionsTitle">Choose what you want to do</h2>
+        <p class="lead" data-i18n="actionsLead">The actions below represent the real Dawaa workflows, not simulated responses.</p>
+        <div class="cards">
+          <article class="card"><div class="glyph" aria-hidden="true">💬</div><h3 data-i18n="requestCardTitle">Request a medicine</h3><p data-i18n="requestCardText">Send a request through WhatsApp. For approved test recipients, it can enter the existing n8n workflow.</p><a href="#try" class="textlink" data-i18n="requestCardLink">Try the WhatsApp demo →</a></article>
+          <article class="card"><div class="glyph" aria-hidden="true">🩺</div><h3 data-i18n="pharmacistCardTitle">Pharmacist review</h3><p data-i18n="pharmacistCardText">Requests that need manual review are routed to the pharmacist, who can approve or reject using Telegram.</p><a href="#diagram" class="textlink" data-i18n="pharmacistCardLink">See the review flow →</a></article>
+          <article class="card"><div class="glyph" aria-hidden="true">⚙️</div><h3 data-i18n="systemsCardTitle">Behind the scenes</h3><p data-i18n="systemsCardText">Google Sheets records reservations and stock. A separate workflow handles error alerts and scheduled checks.</p><a href="#diagram" class="textlink" data-i18n="systemsCardLink">Explore the workflow files →</a></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="try">
+      <div class="wrap panel trial">
+        <div>
+          <div class="eyebrow" data-i18n="tryEyebrow">Try the real entry point</div>
+          <h2 data-i18n="tryTitle">Send a WhatsApp request</h2>
+          <p class="lead" data-i18n="tryLead">Open WhatsApp with no automatic greeting. You can optionally write your own medicine request first. The website doesn't reserve stock directly.</p>
+          <form id="requestForm">
+            <label for="request" data-i18n="requestLabel">Your message (optional)</label>
+            <textarea id="request" maxlength="1000" data-i18n-placeholder="requestPlaceholder" placeholder="Medicine name, strength and quantity (optional)"></textarea>
+            <button type="submit" class="btn" data-i18n="openWhatsApp">Open WhatsApp ↗</button>
+          </form>
+        </div>
+        <div>
+          <h3 data-i18n="beforeTitle">Before you try</h3>
+          <p class="help" data-i18n="beforeText">This project uses a Meta test number. Only approved test recipients can use the test integration. Meta's test number may not open as a regular public chat; a registered production number is needed for general public access.</p>
+          <p class="help" data-i18n="medicineNote">Requests requiring a prescription or extra checks are routed for pharmacist review. No medicine is dispensed through this website.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="wrap">
+        <div class="eyebrow" data-i18n="howEyebrow">How it works</div>
+        <h2 data-i18n="howTitle">From request to reservation</h2>
+        <p class="lead" data-i18n="howLead">A condensed view of the two original n8n workflows, with the same node names used in the exported files.</p>
+        <div class="steps">
+          <div class="step"><div class="num" data-i18n="step1Tag">01 · INTAKE</div><h3>WhatsApp Trigger</h3><p data-i18n="step1Text">A customer's message starts the Pharmacy System workflow.</p></div>
+          <div class="step"><div class="num" data-i18n="step2Tag">02 · AI</div><h3>AI Read Request</h3><p data-i18n="step2Text">Gemini interprets text and available image details and extracts the medicine request.</p></div>
+          <div class="step"><div class="num" data-i18n="step3Tag">03 · CHECK</div><h3>Read Catalog &amp; Match Catalog</h3><p data-i18n="step3Text">Google Sheets provides product, availability, strength and price information.</p></div>
+          <div class="step"><div class="num" data-i18n="step4Tag">04 · SAVE</div><h3>Save Reservation Lines</h3><p data-i18n="step4Text">Reservation details and status are recorded in the Reservation sheet.</p></div>
+          <div class="step"><div class="num" data-i18n="step5Tag">05 · REVIEW</div><h3>Ask Pharmacist</h3><p data-i18n="step5Text">Requests needing human review go to Telegram for an approve-or-reject decision.</p></div>
+          <div class="step"><div class="num" data-i18n="step6Tag">06 · MONITOR</div><h3>ErrorDawaa</h3><p data-i18n="step6Text">Errors can raise alerts; schedule triggers run checks every 15 minutes and at 10 PM Cairo time.</p></div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section wf-section" id="diagram" aria-labelledby="diagramTitle">
+      <div class="wrap">
+        <div class="eyebrow" data-i18n="wfEyebrow">Inside the automation</div>
+        <div class="wf-heading-line">
+          <div>
+            <h2 id="diagramTitle" data-i18n="wfTitle">Explore the real n8n workflows</h2>
+            <p class="lead" data-i18n="wfLead">Every node and connection is mapped from your exported workflows—not a sample diagram. Select a workflow, zoom, move around, or choose a node.</p>
+          </div>
+        </div>
+        <div class="wf-shell" id="wfShell">
+          <div class="wf-topbar">
+            <div class="wf-tabs" role="tablist" aria-label="Workflows">
+              <button class="wf-tab" id="wfTabPharmacy" type="button" role="tab" aria-selected="true" aria-controls="wfCanvasWrap">💊 Pharmacy System</button>
+              <button class="wf-tab" id="wfTabErrors" type="button" role="tab" aria-selected="false" aria-controls="wfCanvasWrap">⚠️ ErrorDawaa</button>
+            </div>
+            <span class="wf-mini-info" id="wfCount" dir="ltr">35 nodes · 36 connections</span>
+          </div>
+          <div class="wf-toolbar">
+            <input id="wfSearch" class="wf-search" type="search" list="wfNodeNames" data-i18n-placeholder="wfSearchPlaceholder" placeholder="Search a node (e.g. Match Catalog)" aria-label="Search node names">
+            <datalist id="wfNodeNames"></datalist>
+            <div class="wf-zoom-controls" aria-label="Diagram controls">
+              <button class="wf-tool" type="button" id="wfZoomOut" aria-label="Zoom out">−</button>
+              <span class="wf-mini-info" id="wfZoomText" dir="ltr" aria-live="off">100%</span>
+              <button class="wf-tool" type="button" id="wfZoomIn" aria-label="Zoom in">+</button>
+              <button class="wf-tool" type="button" id="wfFit" data-i18n="wfFit">Fit to view</button>
+              <button class="wf-tool" type="button" id="wfFull" data-i18n="wfFull">⛶ Fullscreen</button>
+            </div>
+          </div>
+          <div class="wf-canvas-wrap" id="wfCanvasWrap" role="tabpanel" aria-labelledby="wfTabPharmacy">
+            <svg id="wfSvg" dir="ltr" viewBox="0 0 1200 620" role="img" aria-label="Interactive graph of the original n8n workflow" xmlns="http://www.w3.org/2000/svg">
+              <defs><pattern id="wfDots" width="24" height="24" patternUnits="userSpaceOnUse"><circle class="wf-dot" cx="2" cy="2" r="1.4"/></pattern><marker id="wfArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path class="wf-arrow" d="M0 0 L10 5 L0 10 Z"/></marker></defs>
+              <rect x="0" y="0" width="1200" height="620" fill="url(#wfDots)" pointer-events="all"/>
+              <g id="wfViewport"><g id="wfEdges"></g><g id="wfNodes"></g></g>
+            </svg>
+          </div>
+          <div class="wf-bottom">
+            <div class="wf-detail" id="wfDetail" aria-live="polite">
+              <b data-i18n="wfSelectTitle">Select a node</b>
+              <div class="wf-detail-text" data-i18n="wfSelectHint">Click a node to see its type and connected nodes.</div>
+            </div>
+            <div class="wf-legend" aria-label="Node types">
+              <span class="wf-tag" style="--c:#d99039"><i></i><span data-i18n="legendTrigger">Triggers</span></span>
+              <span class="wf-tag" style="--c:#8364cf"><i></i><span data-i18n="legendCode">Code &amp; logic</span></span>
+              <span class="wf-tag" style="--c:#148f78"><i></i><span data-i18n="legendSheets">Google Sheets</span></span>
+              <span class="wf-tag" style="--c:#3399be"><i></i><span data-i18n="legendComm">Messages &amp; APIs</span></span>
+            </div>
+          </div>
+        </div>
+        <p class="wf-hint" data-i18n="wfHint">Tip: drag empty space to pan, use the mouse wheel or +/− to zoom. This diagram shows the saved workflow structure, not real-time executions.</p>
+      </div>
+    </section>
+
+    <section class="section" id="downloads">
+      <div class="wrap">
+        <div class="eyebrow" data-i18n="downloadsEyebrow">Project files</div>
+        <h2 data-i18n="downloadsTitle">Download the n8n workflows</h2>
+        <p class="lead" data-i18n="downloadsLead">Public portfolio copies have credential connections and private identifiers removed. Importing them requires your own service credentials and resource IDs.</p>
+        <div class="downloads">
+          <a class="file" href="workflows/pharmacy-system-public.json" download data-i18n="downloadPharmacy">↓ Pharmacy System JSON</a>
+          <a class="file" href="workflows/error-dawaa-public.json" download data-i18n="downloadErrors">↓ ErrorDawaa JSON</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap footerline"><span data-i18n="footerLeft">Dawaa Pharmacy · n8n automation portfolio</span><span data-i18n="footerRight">Demonstration environment · Meta test mode</span></div></footer>
+  <script>
+    // Single-file HTML/CSS/JS as in Step 7 of the portfolio guide.
+    // There is no public health endpoint; "Meta test mode" is not an uptime badge.
+    const CONFIG = {
+      n8nBase: "https://ambition-coagulant-epidermis.ngrok-free.dev",
+      whatsappNumber: "15551937628"
+    };
+    const translations = {
+      en: {
+        navTry:"Try it", navHow:"How it works", navDownloads:"Downloads",
+        heroTitle:"Smarter pharmacy reservations, powered by automation.",
+        heroDescription:"Dawaa receives medicine requests on WhatsApp, checks a Google Sheets catalog, and routes orders for automatic reservation or pharmacist review through Telegram.",
+        heroReserve:"Reserve a medicine ↗",heroExplore:"Explore the workflows",badge:"Meta test mode",
+        heroNote:"Portfolio demonstration only. The connected Meta WhatsApp test number is restricted to approved test recipients; this badge is not a live n8n uptime check.",
+        actionsTitle:"Choose what you want to do",actionsLead:"The actions below represent the real Dawaa workflows, not simulated responses.",
+        requestCardTitle:"Request a medicine",requestCardText:"Send a request through WhatsApp. For approved test recipients, it can enter the existing n8n workflow.",requestCardLink:"Try the WhatsApp demo →",
+        pharmacistCardTitle:"Pharmacist review",pharmacistCardText:"Requests that need manual review are routed to the pharmacist, who can approve or reject using Telegram.",pharmacistCardLink:"See the review flow →",
+        systemsCardTitle:"Behind the scenes",systemsCardText:"Google Sheets records reservations and stock. A separate workflow handles error alerts and scheduled checks.",systemsCardLink:"Explore the workflow files →",
+        tryEyebrow:"Try the real entry point",tryTitle:"Send a WhatsApp request",tryLead:"Open WhatsApp with no automatic greeting. You can optionally write your own medicine request first. The website doesn't reserve stock directly.",
+        requestLabel:"Your message (optional)",requestPlaceholder:"Medicine name, strength and quantity (optional)",openWhatsApp:"Open WhatsApp ↗",
+        beforeTitle:"Before you try",beforeText:"This project uses a Meta test number. Only approved test recipients can use the test integration. Meta's test number may not open as a regular public chat; a registered production number is needed for general public access.",
+        medicineNote:"Requests requiring a prescription or extra checks are routed for pharmacist review. No medicine is dispensed through this website.",
+        howEyebrow:"How it works",howTitle:"From request to reservation",howLead:"A condensed view of the two original n8n workflows, with the same node names used in the exported files.",
+        step1Tag:"01 · INTAKE",step1Text:"A customer's message starts the Pharmacy System workflow.",
+        step2Tag:"02 · AI",step2Text:"Gemini interprets text and available image details and extracts the medicine request.",
+        step3Tag:"03 · CHECK",step3Text:"Google Sheets provides product, availability, strength and price information.",
+        step4Tag:"04 · SAVE",step4Text:"Reservation details and status are recorded in the Reservation sheet.",
+        step5Tag:"05 · REVIEW",step5Text:"Requests needing human review go to Telegram for an approve-or-reject decision.",
+        step6Tag:"06 · MONITOR",step6Text:"Errors can raise alerts; schedule triggers run checks every 15 minutes and at 10 PM Cairo time.",
+        downloadsEyebrow:"Project files",downloadsTitle:"Download the n8n workflows",downloadsLead:"Public portfolio copies have credential connections and private identifiers removed. Importing them requires your own service credentials and resource IDs.",
+        downloadPharmacy:"↓ Pharmacy System JSON",downloadErrors:"↓ ErrorDawaa JSON",footerLeft:"Dawaa Pharmacy · n8n automation portfolio",footerRight:"Demonstration environment · Meta test mode",
+        languageButton:"العربية",languageLabel:"Switch to Arabic",darkButton:"☾ Dark mode",lightButton:"☀ Light mode",darkLabel:"Enable dark mode",lightLabel:"Enable light mode",navLabel:"Main navigation"
+      },
+      ar: {
+        navTry:"جرّب بنفسك", navHow:"طريقة العمل", navDownloads:"ملفات المشروع",
+        heroTitle:"حجز الأدوية بطريقة أذكى باستخدام الأتمتة.",
+        heroDescription:"بيستقبل Dawaa طلبات الأدوية على واتساب، وبيبحث في كتالوج Google Sheets، وبعدها إما بيسجل الحجز تلقائيًا أو بيحوّله للصيدلي للمراجعة على Telegram.",
+        heroReserve:"احجز دواء ↗",heroExplore:"استكشف الـ Workflows",badge:"وضع اختبار Meta",
+        heroNote:"الموقع ده نموذج عرض للمشروع. رقم واتساب التجريبي من Meta متاح للأرقام المعتمدة للاختبار فقط، والشارة دي مش مؤشر مباشر لحالة تشغيل n8n.",
+        actionsTitle:"تقدر تعمل إيه؟",actionsLead:"الاختيارات دي بتشرح الـ Workflows الحقيقية لمشروع Dawaa، مش ردود وهمية.",
+        requestCardTitle:"اطلب دواء",requestCardText:"ابعت طلبك على واتساب. لو رقمك ضمن أرقام الاختبار المعتمدة، الرسالة ممكن توصل للـ Workflow الموجودة في n8n.",requestCardLink:"جرّب واتساب →",
+        pharmacistCardTitle:"مراجعة الصيدلي",pharmacistCardText:"الطلبات اللي محتاجة مراجعة بتتوصل للصيدلي على Telegram، ويقدر يوافق عليها أو يرفضها.",pharmacistCardLink:"شوف مسار المراجعة →",
+        systemsCardTitle:"إزاي النظام شغال؟",systemsCardText:"Google Sheets بتسجل الحجوزات والمخزون، وفي Workflow تانية للتنبيهات ومراجعة الأخطاء بشكل دوري.",systemsCardLink:"استكشف ملفات الـ Workflows →",
+        tryEyebrow:"جرّب نقطة الدخول الحقيقية",tryTitle:"ابعت طلب على واتساب",tryLead:"افتح واتساب من غير رسالة ترحيبية جاهزة. ممكن تكتب طلب الدواء بنفسك الأول، أو تسيب الخانة فاضية وتكتب على واتساب. الموقع مش بيخصم من المخزون مباشرة.",
+        requestLabel:"رسالتك (اختياري)",requestPlaceholder:"اسم الدواء والتركيز والكمية (اختياري)",openWhatsApp:"افتح واتساب ↗",
+        beforeTitle:"قبل ما تجرّب",beforeText:"المشروع بيستخدم رقم Meta تجريبي. الاختبار متاح للأرقام المعتمدة فقط. رقم Meta التجريبي ممكن ما يفتحش كمحادثة واتساب عامة؛ علشان يستخدمه أي حد، لازم رقم إنتاج حقيقي.",
+        medicineNote:"الطلبات اللي محتاجة روشتة أو مراجعة إضافية بتروح للصيدلي. الموقع مش بيصرف أدوية بنفسه.",
+        howEyebrow:"طريقة العمل",howTitle:"من الطلب لحد الحجز",howLead:"ملخص للـ Workflows الأصليتين، مع الحفاظ على أسماء الـ Nodes زي ما هي في ملفات JSON.",
+        step1Tag:"01 · استقبال",step1Text:"رسالة العميل بتبدأ Workflow اسمها Pharmacy System.",
+        step2Tag:"02 · ذكاء اصطناعي",step2Text:"Gemini بيفهم النص وتفاصيل الصور المتاحة وبيستخرج طلب الدواء.",
+        step3Tag:"03 · التحقق",step3Text:"Google Sheets بتوفر بيانات الصنف والتوافر والتركيز والسعر.",
+        step4Tag:"04 · التسجيل",step4Text:"تفاصيل الحجز وحالته بتتسجل في Sheet اسمها Reservation.",
+        step5Tag:"05 · المراجعة",step5Text:"الطلبات اللي محتاجة مراجعة بشرية بتروح لـ Telegram للموافقة أو الرفض.",
+        step6Tag:"06 · المتابعة",step6Text:"الأخطاء ممكن تطلع تنبيهات، وفي فحوصات مجدولة كل 15 دقيقة والساعة 10 مساءً بتوقيت القاهرة.",
+        downloadsEyebrow:"ملفات المشروع",downloadsTitle:"حمّل ملفات n8n Workflows",downloadsLead:"النسخ العامة معمولة للعرض بعد إزالة روابط الـ Credentials والمعرّفات الخاصة. تشغيلها عندك بيتطلب ربط حساباتك ومواردك.",
+        downloadPharmacy:"↓ ملف Pharmacy System JSON",downloadErrors:"↓ ملف ErrorDawaa JSON",footerLeft:"Dawaa Pharmacy · مشروع أتمتة باستخدام n8n",footerRight:"بيئة عرض تجريبية · وضع اختبار Meta",
+        languageButton:"English",languageLabel:"Switch to English",darkButton:"☾ الوضع الداكن",lightButton:"☀ الوضع الفاتح",darkLabel:"تفعيل الوضع الداكن",lightLabel:"تفعيل الوضع الفاتح",navLabel:"القائمة الرئيسية"
+      }
+    };
+    const $ = selector => document.querySelector(selector);
+    const savePreference = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
+    let language = document.documentElement.lang === 'ar' ? 'ar' : 'en';
+    let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+
+    function updateControls() {
+      const t = translations[language];
+      $('#languageToggle').textContent = t.languageButton;
+      $('#languageToggle').setAttribute('aria-label', t.languageLabel);
+      $('#themeToggle').textContent = theme === 'dark' ? t.lightButton : t.darkButton;
+      $('#themeToggle').setAttribute('aria-label', theme === 'dark' ? t.lightLabel : t.darkLabel);
+      $('#themeToggle').setAttribute('aria-pressed', String(theme === 'dark'));
+    }
+    function applyLanguage(next) {
+      language = next;
+      document.documentElement.lang = next;
+      document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+      document.title = next === 'ar' ? 'صيدلية دواء | مشروع أتمتة n8n' : 'Dawaa Pharmacy | n8n Automation Portfolio';
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+        const value = translations[next][element.dataset.i18n];
+        if (value !== undefined) element.textContent = value;
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const value = translations[next][element.dataset.i18nPlaceholder];
+        if (value !== undefined) element.placeholder = value;
+      });
+      $('#mainNav').setAttribute('aria-label', translations[next].navLabel);
+      $('#request').dir = next === 'ar' ? 'rtl' : 'ltr';
+      updateControls();
+      savePreference('dawaa-language', next);
+    }
+    function applyTheme(next) {
+      theme = next;
+      document.documentElement.dataset.theme = next;
+      updateControls();
+      savePreference('dawaa-theme', next);
+    }
+    $('#languageToggle').addEventListener('click', () => applyLanguage(language === 'en' ? 'ar' : 'en'));
+    $('#themeToggle').addEventListener('click', () => applyTheme(theme === 'light' ? 'dark' : 'light'));
+    applyLanguage(language);
+    updateControls();
+
+    // No default / greeting text is ever inserted into the WhatsApp URL.
+    const whatsappBase = 'https://wa.me/' + CONFIG.whatsappNumber;
+    $('#heroWhatsApp').href = whatsappBase;
+    $('#requestForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const message = $('#request').value.trim();
+      const url = message ? whatsappBase + '?text=' + encodeURIComponent(message) : whatsappBase;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+  </script>
+
+<script>
+// Inlined structure for GitHub Pages AND offline file:// preview: no fetch() or live credentials.
+const WORKFLOW_GRAPHS = {"pharmacy":{"nodes":[{"name":"If","kind":"if","cat":"logic","x":-96,"y":-112},{"name":"Prepare Text Read","kind":"code","cat":"code","x":256,"y":-48},{"name":"Get Photo URL","kind":"whatsApp","cat":"whatsapp","x":64,"y":-272},{"name":"AI Read Request","kind":"httpRequest","cat":"ai","x":608,"y":-112},{"name":"Match Catalog","kind":"code","cat":"code","x":1056,"y":-224},{"name":"Read Catalog","kind":"googleSheets","cat":"sheets","x":864,"y":-224},{"name":"Save Reservation Lines","kind":"googleSheets","cat":"sheets","x":1712,"y":-160},{"name":"Auto or Pharmacist?","kind":"if","cat":"logic","x":1888,"y":-160},{"name":"Ask Pharmacist","kind":"telegram","cat":"telegram","x":2560,"y":-256},{"name":"Take Stock Now","kind":"code","cat":"code","x":2160,"y":-32},{"name":"Confirm Reservation","kind":"whatsApp","cat":"whatsapp","x":2560,"y":-32},{"name":"Tell Customer: Pharmacist Checking","kind":"whatsApp","cat":"whatsapp","x":1520,"y":32},{"name":"Nothing Found Reply","kind":"whatsApp","cat":"whatsapp","x":1520,"y":-352},{"name":"Route Request","kind":"switch","cat":"logic","x":1232,"y":-224},{"name":"Download Photo","kind":"httpRequest","cat":"ai","x":224,"y":-272},{"name":"Prepare Prescription Read","kind":"code","cat":"code","x":384,"y":-272},{"name":"Filter Message","kind":"code","cat":"code","x":-288,"y":-112},{"name":"AI Failed : Ask Pharmacist","kind":"telegram","cat":"telegram","x":864,"y":-16},{"name":"One Row per Medicine","kind":"code","cat":"code","x":1520,"y":-160},{"name":"Update Catalog","kind":"googleSheets","cat":"sheets","x":2384,"y":-32},{"name":"Telegram Trigger","kind":"telegramTrigger","cat":"trigger","x":-384,"y":560},{"name":"Find Pending Lines","kind":"googleSheets","cat":"sheets","x":16,"y":560},{"name":"Apply Decision","kind":"code","cat":"code","x":400,"y":560},{"name":"Mark Message Done","kind":"telegram","cat":"telegram","x":784,"y":688},{"name":"Answer Pharma","kind":"telegram","cat":"telegram","x":576,"y":560},{"name":"Update lines","kind":"googleSheets","cat":"sheets","x":992,"y":400},{"name":"Take Stock Approved","kind":"googleSheets","cat":"sheets","x":1776,"y":288},{"name":"Tell Customer : Approved","kind":"whatsApp","cat":"whatsapp","x":2000,"y":288},{"name":"Parse Decision","kind":"code","cat":"code","x":-192,"y":560},{"name":"Read Catalog (Decision)","kind":"googleSheets","cat":"sheets","x":224,"y":560},{"name":"Line Updates","kind":"code","cat":"code","x":784,"y":400},{"name":"Approved?","kind":"if","cat":"logic","x":1184,"y":400},{"name":"Stock Rows","kind":"code","cat":"code","x":1504,"y":288},{"name":"Send message","kind":"whatsApp","cat":"whatsapp","x":1504,"y":544},{"name":"WhatsApp Trigger","kind":"whatsAppTrigger","cat":"trigger","x":-464,"y":-112}],"edges":[{"source":"If","target":"Get Photo URL","port":0,"input":0,"outputType":"main"},{"source":"If","target":"Prepare Text Read","port":1,"input":0,"outputType":"main"},{"source":"Get Photo URL","target":"Download Photo","port":0,"input":0,"outputType":"main"},{"source":"Prepare Text Read","target":"AI Read Request","port":0,"input":0,"outputType":"main"},{"source":"AI Read Request","target":"Read Catalog","port":0,"input":0,"outputType":"main"},{"source":"AI Read Request","target":"AI Failed : Ask Pharmacist","port":1,"input":0,"outputType":"main"},{"source":"Read Catalog","target":"Match Catalog","port":0,"input":0,"outputType":"main"},{"source":"Match Catalog","target":"Route Request","port":0,"input":0,"outputType":"main"},{"source":"Save Reservation Lines","target":"Auto or Pharmacist?","port":0,"input":0,"outputType":"main"},{"source":"Auto or Pharmacist?","target":"Ask Pharmacist","port":0,"input":0,"outputType":"main"},{"source":"Auto or Pharmacist?","target":"Take Stock Now","port":1,"input":0,"outputType":"main"},{"source":"Take Stock Now","target":"Update Catalog","port":0,"input":0,"outputType":"main"},{"source":"Route Request","target":"Nothing Found Reply","port":0,"input":0,"outputType":"main"},{"source":"Route Request","target":"One Row per Medicine","port":1,"input":0,"outputType":"main"},{"source":"Route Request","target":"One Row per Medicine","port":2,"input":0,"outputType":"main"},{"source":"Route Request","target":"One Row per Medicine","port":3,"input":0,"outputType":"main"},{"source":"Route Request","target":"Tell Customer: Pharmacist Checking","port":3,"input":0,"outputType":"main"},{"source":"Download Photo","target":"Prepare Prescription Read","port":0,"input":0,"outputType":"main"},{"source":"Prepare Prescription Read","target":"AI Read Request","port":0,"input":0,"outputType":"main"},{"source":"Filter Message","target":"If","port":0,"input":0,"outputType":"main"},{"source":"One Row per Medicine","target":"Save Reservation Lines","port":0,"input":0,"outputType":"main"},{"source":"Update Catalog","target":"Confirm Reservation","port":0,"input":0,"outputType":"main"},{"source":"Telegram Trigger","target":"Parse Decision","port":0,"input":0,"outputType":"main"},{"source":"Find Pending Lines","target":"Read Catalog (Decision)","port":0,"input":0,"outputType":"main"},{"source":"Apply Decision","target":"Answer Pharma","port":0,"input":0,"outputType":"main"},{"source":"Answer Pharma","target":"Mark Message Done","port":0,"input":0,"outputType":"main"},{"source":"Answer Pharma","target":"Line Updates","port":0,"input":0,"outputType":"main"},{"source":"Update lines","target":"Approved?","port":0,"input":0,"outputType":"main"},{"source":"Take Stock Approved","target":"Tell Customer : Approved","port":0,"input":0,"outputType":"main"},{"source":"Parse Decision","target":"Find Pending Lines","port":0,"input":0,"outputType":"main"},{"source":"Read Catalog (Decision)","target":"Apply Decision","port":0,"input":0,"outputType":"main"},{"source":"Line Updates","target":"Update lines","port":0,"input":0,"outputType":"main"},{"source":"Approved?","target":"Stock Rows","port":0,"input":0,"outputType":"main"},{"source":"Approved?","target":"Send message","port":1,"input":0,"outputType":"main"},{"source":"Stock Rows","target":"Take Stock Approved","port":0,"input":0,"outputType":"main"},{"source":"WhatsApp Trigger","target":"Filter Message","port":0,"input":0,"outputType":"main"}]},"errors":{"nodes":[{"name":"Error Trigger","kind":"errorTrigger","cat":"trigger","x":-1968,"y":-128},{"name":"Classify Error","kind":"code","cat":"code","x":-1792,"y":-128},{"name":"If","kind":"if","cat":"logic","x":-1232,"y":-128},{"name":"Alert Admin","kind":"gmail","cat":"email","x":-1008,"y":-144},{"name":"Alert Admin1","kind":"telegram","cat":"telegram","x":-1408,"y":-128},{"name":"Alert Team","kind":"googleSheets","cat":"sheets","x":-1600,"y":-128},{"name":"Every 15 min","kind":"scheduleTrigger","cat":"trigger","x":-1968,"y":96},{"name":"Read Cataloge","kind":"googleSheets","cat":"sheets","x":-1552,"y":96},{"name":"Read Reservations","kind":"googleSheets","cat":"sheets","x":-1776,"y":96},{"name":"Expired Lines","kind":"code","cat":"code","x":-1360,"y":96},{"name":"Mark Expired","kind":"googleSheets","cat":"sheets","x":-1168,"y":96},{"name":"Code in JavaScript","kind":"code","cat":"code","x":-1344,"y":288},{"name":"Send message","kind":"whatsApp","cat":"whatsapp","x":-992,"y":96},{"name":"Return Stock","kind":"googleSheets","cat":"sheets","x":-1120,"y":288},{"name":"Read Stock","kind":"googleSheets","cat":"sheets","x":-1760,"y":560},{"name":"Everyday at 10 pm","kind":"scheduleTrigger","cat":"trigger","x":-1968,"y":560},{"name":"Code in JavaScript1","kind":"code","cat":"code","x":-1552,"y":560},{"name":"Send a text message","kind":"telegram","cat":"telegram","x":-1344,"y":560},{"name":"Send a message","kind":"gmail","cat":"email","x":-1328,"y":736}],"edges":[{"source":"Classify Error","target":"Alert Team","port":0,"input":0,"outputType":"main"},{"source":"If","target":"Alert Admin","port":0,"input":0,"outputType":"main"},{"source":"Error Trigger","target":"Classify Error","port":0,"input":0,"outputType":"main"},{"source":"Alert Admin1","target":"If","port":0,"input":0,"outputType":"main"},{"source":"Alert Team","target":"Alert Admin1","port":0,"input":0,"outputType":"main"},{"source":"Every 15 min","target":"Read Reservations","port":0,"input":0,"outputType":"main"},{"source":"Read Cataloge","target":"Expired Lines","port":0,"input":0,"outputType":"main"},{"source":"Read Cataloge","target":"Code in JavaScript","port":0,"input":0,"outputType":"main"},{"source":"Read Reservations","target":"Read Cataloge","port":0,"input":0,"outputType":"main"},{"source":"Expired Lines","target":"Mark Expired","port":0,"input":0,"outputType":"main"},{"source":"Code in JavaScript","target":"Return Stock","port":0,"input":0,"outputType":"main"},{"source":"Mark Expired","target":"Send message","port":0,"input":0,"outputType":"main"},{"source":"Everyday at 10 pm","target":"Read Stock","port":0,"input":0,"outputType":"main"},{"source":"Read Stock","target":"Code in JavaScript1","port":0,"input":0,"outputType":"main"},{"source":"Code in JavaScript1","target":"Send a text message","port":0,"input":0,"outputType":"main"},{"source":"Code in JavaScript1","target":"Send a message","port":0,"input":0,"outputType":"main"}]}};
+Object.assign(translations.en, {
+  navDiagram:'Workflow diagram',
+  wfEyebrow:'Behind the scenes', wfTitle:'Explore the real n8n workflows',
+  wfLead:'The actual node names, positions and connections from your exported workflows—not a sample diagram. Switch workflows, zoom, pan or select a node.',
+  wfSearchPlaceholder:'Search a node (e.g. Match Catalog)', wfFit:'Fit to view', wfFull:'⛶ Fullscreen', wfExitFull:'⛶ Exit fullscreen',
+  wfSelectTitle:'Select a node', wfSelectHint:'Click a node to see its type and connected nodes.',
+  legendTrigger:'Triggers', legendCode:'Code & logic', legendSheets:'Google Sheets', legendComm:'Messages & APIs',
+  wfHint:'Tip: drag empty space to pan; use the mouse wheel or +/− to zoom. This shows the saved workflow structure, not live execution status.',
+  wfType:'Type', wfOutgoing:'Connects to', wfIncoming:'Receives from', wfNone:'None', wfNotFound:'No matching node found',wfNodes:'nodes', wfConnections:'connections', wfSearchLabel:'Search node names'
+});
+Object.assign(translations.ar, {
+  navDiagram:'رسم الـ Workflow',
+  wfEyebrow:'جوا النظام', wfTitle:'شوف شكل الـ n8n Workflows الحقيقية',
+  wfLead:'كل الـ Nodes بأسمائها ومواقعها وتوصيلاتها من ملفات المشروع الأصلية، مش رسمة توضيحية متخيلة. بدّل بين الـ Workflows وكبّر الرسم واضغط على أي Node.',
+  wfSearchPlaceholder:'دوّر على Node (مثلاً Match Catalog)', wfFit:'عرض الرسم كامل', wfFull:'⛶ ملء الشاشة', wfExitFull:'⛶ خروج من ملء الشاشة',
+  wfSelectTitle:'اختار Node', wfSelectHint:'اضغط على أي Node علشان تشوف نوعها والـ Nodes المتوصلة بيها.',
+  legendTrigger:'نقط البداية', legendCode:'الكود والمنطق', legendSheets:'Google Sheets', legendComm:'الرسائل والـ APIs',
+  wfHint:'تقدر تسحب مساحة فاضية لتحريك الرسم، وتستخدم عجلة الماوس أو +/− للتكبير. الرسم بيوضح بنية الـ Workflow المحفوظة، مش تشغيلها لحظيًا.',
+  wfType:'النوع', wfOutgoing:'متوصلة بـ', wfIncoming:'بتستقبل من', wfNone:'مفيش', wfNotFound:'مفيش Node مطابقة',wfNodes:'Nodes',wfConnections:'توصيلات', wfSearchLabel:'البحث عن أسماء الـ Nodes'
+});
+(function() {
+  const svg=document.getElementById('wfSvg');
+  const viewport=document.getElementById('wfViewport');
+  const edgesGroup=document.getElementById('wfEdges');
+  const nodesGroup=document.getElementById('wfNodes');
+  const detail=document.getElementById('wfDetail');
+  const search=document.getElementById('wfSearch');
+  const namesList=document.getElementById('wfNodeNames');
+  const shell=document.getElementById('wfShell');
+  const NS='http://www.w3.org/2000/svg';
+  const SW=1200,SH=620,NW=192,NH=66;
+  let active='pharmacy', current=null, selected=null, currentScale=1,tx=0,ty=0, baseFit=1;
+  let dragging=null;
+  const icons={trigger:'▶',whatsapp:'WA',telegram:'TG',sheets:'GS',email:'@',ai:'AI',logic:'IF',code:'{ }',other:'●'};
+  const colors={trigger:'#d99039',whatsapp:'#159e73',telegram:'#258fce',sheets:'#148f78',email:'#d16058',ai:'#a16e38',logic:'#8364cf',code:'#7258c2',other:'#6b8796'};
+  const kindNames={whatsAppTrigger:'WhatsApp Trigger',telegramTrigger:'Telegram Trigger',errorTrigger:'Error Trigger',scheduleTrigger:'Schedule Trigger',googleSheets:'Google Sheets',whatsApp:'WhatsApp',telegram:'Telegram',httpRequest:'HTTP Request',gmail:'Gmail',code:'Code',if:'IF',switch:'Switch'};
+  function elt(name,attrs,parent,txt) {
+    const e=document.createElementNS(NS,name);
+    for(const [k,v] of Object.entries(attrs || {})) e.setAttribute(k,String(v));
+    if(txt!==undefined) e.textContent=txt;
+    if(parent) parent.appendChild(e);
+    return e;
+  }
+  function T(key) {return translations[language][key];}
+  function xy(point) {return {x:point.x*1.55,y:point.y*1.90};}
+  function svgPoint(ev) {
+    const point=svg.createSVGPoint();point.x=ev.clientX;point.y=ev.clientY;
+    return point.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function updateTransform() {
+    viewport.setAttribute('transform',`translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${currentScale.toFixed(4)})`);
+    document.getElementById('wfZoomText').textContent=Math.round(currentScale/baseFit*100)+'%';
+  }
+  function fitNodes(subset) {
+    const array=subset && subset.length?subset:current.nodes;
+    let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
+    for(const n of array) {
+      minx=Math.min(minx,n.px);miny=Math.min(miny,n.py);
+      maxx=Math.max(maxx,n.px+NW);maxy=Math.max(maxy,n.py+NH);
+    }
+    const ww=Math.max(1,maxx-minx),hh=Math.max(1,maxy-miny);
+    const fit=Math.min((SW-100)/ww,(SH-105)/hh,1.7);
+    currentScale=fit;
+    tx=(SW-ww*fit)/2-minx*fit;
+    ty=(SH-hh*fit)/2-miny*fit;
+    updateTransform();
+    return fit;
+  }
+  function fitAll(){baseFit=fitNodes();updateTransform();}
+  function drawText(parent, x, y, str, maxchars=21) {
+    let words=String(str).split(/\s+/), lines=[''];
+    for(const w of words) {
+      if(lines[lines.length-1] && (lines[lines.length-1]+' '+w).length>maxchars && lines.length<2) lines.push(w);
+      else lines[lines.length-1]+=(lines[lines.length-1]?' ':'')+w;
+    }
+    if(lines.length===1&&lines[0].length>maxchars+3)lines[0]=lines[0].slice(0,maxchars+1)+'…';
+    if(lines.length===2&&lines[1].length>maxchars+3)lines[1]=lines[1].slice(0,maxchars+1)+'…';
+    if(lines.length>2)lines=lines.slice(0,2);
+    const t=elt('text',{x,y,class:'wf-name'},parent);
+    if(lines.length===1) t.textContent=lines[0];
+    else {elt('tspan',{x,y:y-8},t,lines[0]);elt('tspan',{x,dy:18},t,lines[1]);}
+  }
+  function render() {
+    selected=null;
+    nodesGroup.replaceChildren(); edgesGroup.replaceChildren();
+    const graph=WORKFLOW_GRAPHS[active];
+    const byName=new Map();
+    const nodes=graph.nodes.map(n=>{
+      const q=xy(n), node={...n,px:q.x,py:q.y};
+      byName.set(n.name,node);return node;
+    });
+    current={nodes,edges:graph.edges,byName};
+    // Draw every real connection in front of the background and behind the nodes.
+    for(const edge of graph.edges) {
+      const a=byName.get(edge.source),b=byName.get(edge.target);
+      if(!a||!b)continue;
+      const sx=a.px+NW,sy=a.py+NH/2+((edge.port>0)?13:-((a.kind==='if'||a.kind==='switch')?9:0));
+      const ex=b.px,ey=b.py+NH/2;
+      const bend=Math.max(44,Math.min(145,Math.abs(ex-sx)*.43));
+      const path=elt('path',{d:`M${sx} ${sy} C${sx+bend} ${sy},${ex-bend} ${ey},${ex} ${ey}`,class:'wf-edge','marker-end':'url(#wfArrow)','data-source':edge.source,'data-target':edge.target},edgesGroup);
+      // True/False labels are native n8n IF output order; switch outlets are left unlabeled.
+      if(a.kind==='if') elt('text',{x:sx+17,y:sy-8,class:'wf-edge-text'},edgesGroup,edge.port===0?'T':'F');
+    }
+    for(const n of nodes) {
+      const g=elt('g',{class:'wf-node',role:'button',tabindex:'0','data-node':n.name,'aria-label':n.name,transform:`translate(${n.px} ${n.py})`},nodesGroup);
+      elt('rect',{class:'wf-card',x:0,y:0,width:NW,height:NH,rx:13},g);
+      elt('rect',{class:'wf-iconbg',x:9,y:11,width:43,height:44,rx:9,fill:colors[n.cat]||colors.other},g);
+      elt('text',{class:'wf-icontext',x:30.5,y:33},g,icons[n.cat]||icons.other);
+      drawText(g,62,31,n.name,19);
+      // Screen reader data and selected detail remain text-only, no config or node code exposure.
+      elt('circle',{class:'wf-port',cx:0,cy:NH/2,r:4.5},g);
+      elt('circle',{class:'wf-port',cx:NW,cy:NH/2,r:4.5},g);
+      g.addEventListener('click',()=>choose(n.name));
+      g.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();choose(n.name);}});
+    }
+    document.getElementById('wfCount').textContent=`${nodes.length} ${T('wfNodes')} · ${graph.edges.length} ${T('wfConnections')}`;
+    namesList.replaceChildren();
+    for(const n of nodes) {const o=document.createElement('option');o.value=n.name;namesList.appendChild(o);}
+    search.value='';
+    detail.replaceChildren();
+    const b=document.createElement('b');b.textContent=T('wfSelectTitle');detail.appendChild(b);
+    const d=document.createElement('div');d.className='wf-detail-text';d.textContent=T('wfSelectHint');detail.appendChild(d);
+    document.getElementById('wfTabPharmacy').setAttribute('aria-selected',String(active==='pharmacy'));
+    document.getElementById('wfTabErrors').setAttribute('aria-selected',String(active==='errors'));
+    document.getElementById('wfCanvasWrap').setAttribute('aria-labelledby',active==='pharmacy'?'wfTabPharmacy':'wfTabErrors');
+    document.getElementById('wfTabPharmacy').tabIndex=active==='pharmacy'?0:-1;
+    document.getElementById('wfTabErrors').tabIndex=active==='errors'?0:-1;
+    fitAll();
+  }
+  function choose(name,center=false) {
+    const n=current.byName.get(name);if(!n)return false;
+    selected=name;
+    for(const g of nodesGroup.children)g.classList.toggle('selected',g.dataset.node===name);
+    for(const path of edgesGroup.querySelectorAll('path'))path.classList.toggle('is-active',path.dataset.source===name||path.dataset.target===name);
+    const outgoing=current.edges.filter(e=>e.source===name).map(e=>e.target);
+    const incoming=current.edges.filter(e=>e.target===name).map(e=>e.source);
+    detail.replaceChildren();
+    const b=document.createElement('b');b.textContent=n.name;detail.appendChild(b);
+    const d=document.createElement('div');d.className='wf-detail-text';
+    const line=(k,v)=>{const p=document.createElement('div');const strong=document.createElement('strong');strong.textContent=T(k)+': ';p.appendChild(strong);p.appendChild(document.createTextNode(v||T('wfNone')));d.appendChild(p);};
+    line('wfType',kindNames[n.kind]||n.kind);
+    line('wfIncoming',incoming.join(', '));line('wfOutgoing',outgoing.join(', '));
+    detail.appendChild(d);
+    if(center) {
+      currentScale=Math.max(baseFit*1.8,Math.min(1.28,Math.max(0.8,currentScale)));
+      tx=SW/2-(n.px+NW/2)*currentScale;ty=SH/2-(n.py+NH/2)*currentScale;updateTransform();
+    }
+    return true;
+  }
+  function zoom(factor,cx=SW/2,cy=SH/2) {
+    const next=Math.max(.07,Math.min(4.8,currentScale*factor));
+    const change=next/currentScale;
+    tx=cx-(cx-tx)*change;ty=cy-(cy-ty)*change;currentScale=next;updateTransform();
+  }
+  document.getElementById('wfTabPharmacy').addEventListener('click',()=>{if(active!=='pharmacy'){active='pharmacy';render();}});
+  document.getElementById('wfTabErrors').addEventListener('click',()=>{if(active!=='errors'){active='errors';render();}});
+  document.getElementById('wfFit').addEventListener('click',fitAll);
+  document.getElementById('wfZoomIn').addEventListener('click',()=>zoom(1.32));
+  document.getElementById('wfZoomOut').addEventListener('click',()=>zoom(1/1.32));
+  document.getElementById('wfFull').addEventListener('click',async()=>{
+    if(document.fullscreenElement===shell) {await document.exitFullscreen();return;}
+    if(shell.requestFullscreen) {try {await shell.requestFullscreen();}catch(_) {}}
+  });
+  document.addEventListener('fullscreenchange',()=>{
+    const b=document.getElementById('wfFull');b.textContent=document.fullscreenElement===shell?T('wfExitFull'):T('wfFull');
+  });
+  function findNode() {
+    const query=search.value.trim().toLowerCase();if(!query)return;
+    const n=current.nodes.find(n=>n.name.toLowerCase()===query)||current.nodes.find(n=>n.name.toLowerCase().includes(query));
+    if(n)choose(n.name,true);
+    else {detail.replaceChildren();const el=document.createElement('b');el.textContent=T('wfNotFound');detail.appendChild(el);}
+  }
+  search.addEventListener('change',findNode);
+  search.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();findNode();}});
+  svg.addEventListener('wheel',ev=>{ev.preventDefault();const p=svgPoint(ev);zoom(ev.deltaY<0?1.15:1/1.15,p.x,p.y);},{passive:false});
+  svg.addEventListener('pointerdown',ev=>{
+    if(ev.button!==0 || ev.target.closest('.wf-node'))return;
+    const p=svgPoint(ev);dragging={id:ev.pointerId,p,tx,ty};
+    svg.setPointerCapture(ev.pointerId);svg.classList.add('dragging');
+  });
+  svg.addEventListener('pointermove',ev=>{
+    if(!dragging || ev.pointerId!==dragging.id)return;
+    const p=svgPoint(ev);tx=dragging.tx+(p.x-dragging.p.x);ty=dragging.ty+(p.y-dragging.p.y);updateTransform();
+  });
+  const stop=()=>{dragging=null;svg.classList.remove('dragging');};
+  svg.addEventListener('pointerup',stop);svg.addEventListener('pointercancel',stop);svg.addEventListener('lostpointercapture',stop);
+  const oldApplyLanguage=applyLanguage;
+  // Existing language toggle calls applyLanguage through global lexical binding.
+  // Re-render diagram on language changes without modifying node names.
+  document.getElementById('languageToggle').addEventListener('click',()=>{
+    // Existing listener has already updated language before this listener runs.
+    document.getElementById('wfSearch').setAttribute('aria-label',T('wfSearchLabel'));
+    render();
+  });
+  render();
+  applyLanguage(language);
+})();
+</script>
+
+</body>
+</html>
